@@ -1,12 +1,20 @@
 # *FANTASY3D*
 Hello! This is my first C++ project with graphics.
 It's a pseudo 3D engine. Uses raycasting technology to render.
-![Demo](assets/gifs/demo.gif)
+![Demo](assets/gifs/demo2.gif)
+## FOG UPDATE 0.02
+* Added fog
+* Added render distance - now objects aren't rendered if too far away
+* Made window resizable
+* Some small code refactoring
+* 'maps/arena.txt' is now finished completely
+
 ## What can it do now:
-* Render the map, provided in *maps/arena.txt"
+* Render the map, provided in "maps/arena.txt" (with fog!)
 * Supports collisions with the map, supports moving by Z-axis (vertical one)
 * Supports 2 player modes: cheater (when you can fly and no-clip) and default (when you only can walk and jump)
 * Supports simple gravity: player falls down in default mode
+* Supports resizing the window while keeping view propotions the same
 
 ## Controls:
 - W,A,S,D - movement

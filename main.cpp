@@ -250,6 +250,13 @@ namespace Mathematics{
 		Vector2 summ = p0 + p1;
 		return summ * 0.5f;
 	}
+	// LINEAR INTERPOLATION
+	float LinearInterpolationF(float x0, float x1, float target){
+		return x0*(1.0f-target) + x1*target;
+	}
+	int LinearInterpolationInt(int x0, int x1, int target){
+		return (x0*(100 - target) + x1*target)/100;
+	}
 };
 
 struct Wall{
@@ -262,17 +269,20 @@ struct Wall{
 	SDL_Color color = {0, 0, 0, 0};
 	//OTHER VARIABLES. CAN BE CHANGED
 	Vector2 pos_m = {0.0f, 0.0f};
-	bool is_visible = true;
 	//FUNCTIONS
 	void CalculateMiddlePoint(){
 		pos_m = Mathematics::CalculateMiddlePoint2D(pos0, pos1);
 	}
 };
 
-struct Map{	
+struct Map{
+	//WALLS
 	static constexpr int kMaxWallCount = 500;
 	Wall walls[kMaxWallCount];
 	int walls_count = 0;
+	//ENVIROMENT
+	SDL_Color fog_color = {200, 170, 200, 255};
+	SDL_Color floor_color = {50, 100, 45, 255};
 	float floor_level = 0.0f;
 	//FUNCTIONS
 	Map(const char* file_name){
@@ -381,12 +391,12 @@ struct PhysicsBody{
 		pos += curr_speed * multiplier;
 	}
 	void TryApplySpeed(float multiplier, float floor_level){
-		Vector3 speed = curr_speed;
+		pos += curr_speed * multiplier;
+		//Z Collision (only floor by now)
 		if(pos.z < floor_level){
 			pos.z = floor_level;
-			if(speed.z < 0.0f) speed.z = 0.0f;
-		}
-		pos += speed * multiplier;
+			if(curr_speed.z < 0.0f) curr_speed.z = 0.0f;
+		}	
 	}
 	void Stop(){
 		curr_speed = {0.0f, 0.0f, 0.0f};
@@ -399,11 +409,7 @@ struct PhysicsBody{
 		AccelerateByVector(Mathematics::GetVectorByAngle3(angle), multiplier);
 	}
 	void Gravitate(float multiplier, float g, float floor_level){
-		if(pos.z > floor_level){
-			curr_speed.z -= g*multiplier;
-		}else if(curr_speed.z < 0.0f){
-			curr_speed.z = 0.0f;
-		}
+		curr_speed.z -= g*multiplier;
 	}
 	//FORCE
 	void AddForceByVector(const Vector3& force_vector, float multiplier){
@@ -547,20 +553,43 @@ struct HitInfo{	//INFORMATION OF ENTITIES WHICH IS NEEDED TO DRAW THEM
 
 class Camera{
 public:
-	Camera(SDL_Window* window, SDL_Renderer* renderer, float fov, float render_plane_h, int line_count = 100, Vector3 pos = {0.0f, 0.0f, 0.0f}, float ang = 0.0f):
-	window_(window),renderer_(renderer),fov_(fov),render_plane_height_(render_plane_h), lines_count_(line_count),pos_(pos),angle_(ang){
-		SDL_GetWindowSize(window, &screen_w_, &screen_h_);
+	Camera(int out_w, int out_h, float fov, float render_plane_h, int line_count = 100, int render_distance = 100, Vector3 pos = {0.0f, 0.0f, 0.0f}, float ang = 0.0f):
+	out_w_(out_w),out_h_(out_h),fov_(fov),render_plane_height_(render_plane_h),lines_count_(line_count),render_distance_(render_distance),pos_(pos),angle_(ang){
+		aspect_ratio_ = (float)out_w/(float)out_h;
 	}
+	//SETTERS
+	void SetOutputImageSize(int w, int h){
+		out_w_ = w; out_h_ = h;
+		aspect_ratio_ = (float)w/(float)h;
+	}
+	void SetQuality(int quality){
+		if(quality < 1) return;
+		lines_count_ = quality;
+	}
+	void SetRenderDistance(int distance){
+		if(distance < 0) return;
+		render_distance_ = distance;
+	}
+	//TRANSFORM
 	void MoveTo(const Vector3& vector){
 		pos_ = vector;
 	}
 	void TurnToAngle(float angle){
 		angle_ = Mathematics::GetClampedAngle(angle);
 	}
-	void Render(const Map& map){
+	//RENDERING AND CALCULATING
+	void Render(SDL_Renderer* renderer, const Map& map){
+		//BACKGROUND
+		DrawBg(renderer, map.fog_color);
+		//FLOOR
+		DrawFloor(renderer, map.floor_color, map.fog_color);
+		//LINES
 		float angle_betw_rays = fov_/lines_count_;	//angle between 2 closest rays. Identical for every ray
 		int max_hit_per_ray = 10;
-		//ITERATING ALL RAYS
+		//GETTING RID OF FAR WALLS
+		bool walls_to_render_flags[map.walls_count];
+		SetNearWallIndexes_CH(map.walls, map.walls_count, walls_to_render_flags);
+		//ITERATING ALL LINES
 		for(int line_num = 0; line_num < lines_count_; line_num ++){
 			//THIS RAY	
 			float current_ray_angle = Mathematics::GetClampedAngle(angle_ + fov_/2.0f - angle_betw_rays * line_num);
@@ -571,6 +600,7 @@ public:
 			for(int wall_index = 0; wall_index < map.walls_count; wall_index++){
 				//CHECKS
 				if(hits_count_per_ray >= max_hit_per_ray) break;
+				if(!walls_to_render_flags[wall_index]) continue;
 				//THIS WALL
 				const Wall& current_wall = map.walls[wall_index];
 				if(current_wall.is_vertical_){
@@ -599,23 +629,29 @@ public:
 			//SORTING ALL HIT POINTS
 			SortHitArray_CH(hit_info_array, hits_count_per_ray);
 			//DISPLAYING ENTITIES
-			DrawHitEntities(hit_info_array, hits_count_per_ray);	
-		}		
+			DrawHitEntities(renderer, hit_info_array, hits_count_per_ray, map.fog_color);	
+		}
 	}
 private:
 	//SCREEN
-	SDL_Window* window_ = nullptr;
-	SDL_Renderer* renderer_ = nullptr;
-	int screen_h_;
-	int screen_w_;
+	int out_w_;
+	int out_h_;
+	float aspect_ratio_;
 	//RENDERING
 	float fov_;
 	float render_plane_height_;
 	int lines_count_;
+	int render_distance_;
 	//TRANSFORM
 	Vector3 pos_;
 	float angle_;
 	//FUNCTIONS
+	void SetNearWallIndexes_CH(const Wall* walls, int walls_count, bool* out_indexes_array){
+		for(int i = 0; i < walls_count; i++){
+			float distance = Mathematics::GetFastDistance2D({pos_.x,pos_.y}, walls[i].pos_m);
+			out_indexes_array[i] = distance <= render_distance_*1.5f;
+		}
+	}
 	void SortHitArray_CH(HitInfo* array, int array_size){
 		int sorted_count = 1;
 		while(sorted_count < array_size){
@@ -638,29 +674,65 @@ private:
 			sorted_count ++; //EXPANDING SORTED PART OF THE ARRAY
 		}
 	}
-	void DrawHitEntities(const HitInfo* array, int array_size){
+	SDL_Color GetFoggedColorFromDistance(const SDL_Color& input_color, const SDL_Color& fog_color, float distance){
+		float distance_clamped = std::min((int)distance, render_distance_);
+		float t = distance_clamped*100/render_distance_;
+		Uint8 r = (Uint8)Mathematics::LinearInterpolationInt(input_color.r, fog_color.r, t);
+		Uint8 g = (Uint8)Mathematics::LinearInterpolationInt(input_color.g, fog_color.g, t);
+		Uint8 b = (Uint8)Mathematics::LinearInterpolationInt(input_color.b, fog_color.b, t);
+		return {r,g,b,input_color.a};
+	}
+	void DrawBg(SDL_Renderer* renderer, const SDL_Color& color){
+		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+		SDL_RenderClear(renderer);
+	}
+	void DrawFloor(SDL_Renderer* renderer, const SDL_Color& color, const SDL_Color& fog_color){
+		int start_line_num = lines_count_ - lines_count_/2;
+		for(int line_num = start_line_num; line_num < lines_count_; line_num ++){
+			//SCREEN POSITION
+			int line_screen_top = out_h_ * line_num/lines_count_;
+			int line_screen_height =  out_h_ * (line_num+1)/lines_count_ - line_screen_top;
+			//WORLD DISTANCE
+			float actual_render_plane_height = render_plane_height_/aspect_ratio_;
+			float line_relative_pos_from_center = (float)line_num/(float)lines_count_ - 0.5f;
+			float coordinate_on_render_plane = actual_render_plane_height * line_relative_pos_from_center;
+			SDL_Color line_color;
+			if(abs(coordinate_on_render_plane) > 0.001f){
+				float distance = std::abs(pos_.z/coordinate_on_render_plane); //Just simple triangles and proportions
+				line_color = GetFoggedColorFromDistance(color, fog_color, distance);
+				//line_color = color;
+			}else{
+				line_color = fog_color;
+			}	
+			//DRAWING	
+			SDL_SetRenderDrawColor(renderer, line_color.r, line_color.g, line_color.b, 255);
+			SDL_Rect rect = {0, line_screen_top, out_w_, line_screen_height};
+			SDL_RenderFillRect(renderer, &rect);
+		}
+	}
+	void DrawHitEntities(SDL_Renderer* renderer, const HitInfo* array, int array_size, const SDL_Color& fog_color){
 		for(int index = 0; index < array_size; index++){
 			HitInfo entity = array[index];
 			if(entity.type == EntityType::WALL){
 				//SCREEN POSITION X & WIDTH
-				int entity_screen_x = entity.line_index*screen_w_/lines_count_;
-				int entity_screen_width = (entity.line_index+1)*screen_w_/lines_count_ - entity_screen_x;
+				int entity_screen_x = entity.line_index*out_w_/lines_count_;
+				int entity_screen_width = (entity.line_index+1)*out_w_/lines_count_ - entity_screen_x;
 				//ENTITY POSITION CLAMPING
 				float entity_pos = std::max(0.0f, entity.pos_z);	//So the part of the wall won't be rendered if under the floor
 				float entity_top = std::max(0.0f, entity.pos_z + entity.height);
 				//SCREEN POSITION Y
-				float inv_distance_x_plane_height = 1.0f / (entity.distance * render_plane_height_);
+				float inv_distance_x_plane_height = aspect_ratio_ / (entity.distance * render_plane_height_);
 				float entity_relative_top_position = 0.5f - (entity_top - pos_.z) * inv_distance_x_plane_height;
 				float entity_relative_bottom_position = 0.5f - (entity_pos - pos_.z) * inv_distance_x_plane_height;
-				int entity_screen_top = entity_relative_top_position * screen_h_;
-				int entity_screen_bottom = entity_relative_bottom_position * screen_h_;
+				int entity_screen_top = entity_relative_top_position * out_h_;
+				int entity_screen_bottom = entity_relative_bottom_position * out_h_;
 				//HEIGHT
 				int entity_screen_height = entity_screen_bottom - entity_screen_top;
 				//DRAWING
-				SDL_Color color = entity.color;
-				SDL_SetRenderDrawColor(renderer_, color.r, color.g, color.b, color.a);
+				SDL_Color color = GetFoggedColorFromDistance(entity.color, fog_color, entity.distance);
+				SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 				SDL_Rect rect = {entity_screen_x, entity_screen_top, entity_screen_width, entity_screen_height};
-				SDL_RenderFillRect(renderer_, &rect);
+				SDL_RenderFillRect(renderer, &rect);
 			}
 		}
 	}
@@ -670,25 +742,27 @@ struct TextBox{
 	static constexpr int max_text_len = 1024;
 	char last_text[max_text_len] = {};
 	SDL_Texture* text_texture = nullptr;
-	
+	//FUNCTIONS
 	TextBox(SDL_Renderer* renderer, const char* text, TTF_Font* font, const SDL_Color& color){
 		Update(renderer, text, font, color, true);
 	}
+	//RERENDER THE TEXTURE (SLOW)
 	void Update(SDL_Renderer* renderer, const char* text, TTF_Font* font, const SDL_Color& color, bool f = false){
 		if(!f && CompareStrings(text, last_text, max_text_len)) return;
 		WriteTextToString_CH(last_text, text, max_text_len);
-		SDL_Surface* text_surface = TTF_RenderText_Solid(font, text, color);
+		SDL_Surface* text_surface = TTF_RenderText_Solid(font, last_text, color);
 		if(text_texture != nullptr) SDL_DestroyTexture(text_texture);
 		if(text_surface != nullptr) text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
 		if(text_surface != nullptr) SDL_FreeSurface(text_surface);
 	}
+	//DRAW THE STORED TEXTURE (FAST)
 	void Draw(SDL_Renderer* renderer, const SDL_Rect& rect){
 		if(text_texture != nullptr) SDL_RenderCopy(renderer, text_texture, NULL, &rect);
 	}
 };
 
 namespace Game{
-	constexpr char version[] = "V0.01";
+	constexpr char version[] = "V0.02 FOG UPDATE";
 	constexpr char name[] = "FANTASY3D";
 	//GAME
 	bool game_running = true;
@@ -704,10 +778,11 @@ namespace Game{
 	//SETTINGS
 	int screen_w = 800;
 	int screen_h = 600;
-	int fov = Mathematics::pi/3.0f;
-	int render_plane_height = 1.0f;
-	int render_quality = 400;
-	int target_fps = 60;
+	float fov = Mathematics::pi/3.0f;
+	float render_plane_height = 1.0f;
+	unsigned int render_quality = 400;
+	unsigned int render_distance = 100;
+	unsigned int target_fps = 60;
 	float sensitivity = 0.001f;
 	bool cursor_locked = true;
 	//FUNCTIONS	
@@ -737,6 +812,15 @@ namespace Game{
 			if (event->type == SDL_QUIT) {
 				game_running = false;
 			}
+			if (event->type == SDL_WINDOWEVENT){
+				if (event->window.event == SDL_WINDOWEVENT_RESIZED){
+					int w = event->window.data1;
+					int h = event->window.data2;
+					screen_h = h;
+					screen_w = w;
+					camera->SetOutputImageSize(w,h);
+				}
+			}
 			if (event->type == SDL_KEYDOWN){
 				if (event->key.keysym.scancode == SDL_SCANCODE_RETURN && game_mode == GameMode::MENU){
 				game_mode = GameMode::PLAYING; }
@@ -760,14 +844,12 @@ namespace Game{
 		if (keystate[SDL_SCANCODE_Q]) movement.z -= 1.0f;
 		//MOVE
 		player->Go(*map, movement, delta_time);
-		camera->MoveTo(player->GetEyePosition());
 	}
 	void ReadMouseInput(){
 		if (game_mode == GameMode::MENU) return;
 		int mouse_x, mouse_y;
 		SDL_GetRelativeMouseState(&mouse_x, &mouse_y);
 		player->Turn(-mouse_x, Game::sensitivity);
-		camera->TurnToAngle(player->angle_);
 	}
 };
 
@@ -782,7 +864,7 @@ int main(int argc, char* argv[])
     TTF_Font* font = TTF_OpenFont("assets/fonts/Joy Circuit.otf", 32);
     if(!font) Game::Crash("FONT DIDN'T LOAD");
     //WINDOW
-	SDL_Window* window = SDL_CreateWindow(Game::name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, Game::screen_w, Game::screen_h, SDL_WINDOW_SHOWN);
+	SDL_Window* window = SDL_CreateWindow(Game::name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, Game::screen_w, Game::screen_h, SDL_WINDOW_RESIZABLE);
 	if(window == nullptr) Game::Crash("WINDOW WEREN'T CREATED");
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if(renderer == nullptr) Game::Crash("RENDER WEREN'T CREATED");
@@ -792,7 +874,7 @@ int main(int argc, char* argv[])
 	const uint8_t* keystate;
 	//ENTITIES
 	Map world_map("arena.txt");
-	Camera cam(window, renderer, Game::fov, Game::render_plane_height, Game::render_quality, {-5.0f, -40.0f, 20.0f}, Mathematics::pi/3.0f);
+	Camera cam(Game::screen_w, Game::screen_h, Game::fov, Game::render_plane_height, Game::render_quality, Game::render_distance, {-5.0f, -40.0f, 20.0f}, Mathematics::pi/3.0f);
 	Player player(5.0f, 1.0f, {25.0f, 25.0f, 10.0f}, Mathematics::pi/2.0f, 1.5f);
 	Game::map = &world_map;
 	Game::camera = &cam;
@@ -803,13 +885,13 @@ int main(int argc, char* argv[])
 	float delta_time = 0.0f;
 	//MENU TEXT
 	TextBox game_name_text(renderer, Game::name, font, {255, 255, 0, 255});
-	TextBox game_version_text(renderer, Game::version, font, {0, 255, 50, 255});
+	TextBox game_version_text(renderer, Game::version, font, {0, 255, 100, 255});
 	TextBox press_enter_text(renderer, "press enter to continue", font, {0, 205, 255, 255});
 	//FPS
 	int fps = 0;
     int fps_text_render_counter = 0;
 	TextBox fps_text(renderer, "hello world", font, {255, 0, 0, 255});
-
+	//GAME LOOP
 	while (Game::game_running) {
 		//FPS CONTROL
 		current_ticks_count = SDL_GetPerformanceCounter();
@@ -822,27 +904,24 @@ int main(int argc, char* argv[])
         //KEYBOARD
         keystate = SDL_GetKeyboardState(NULL);
         Game::ReadKeyboardInput(keystate, delta_time);
+		if(Game::game_mode != GameMode::MENU) cam.MoveTo(player.GetEyePosition());
 		//MOUSE
 		Game::ReadMouseInput();
+		if(Game::game_mode != GameMode::MENU) cam.TurnToAngle(player.angle_);
 		//PHYSICS
 		player.Gravitate(delta_time, Game::gravity, world_map.floor_level);
 		player.ApplySpeed(delta_time, world_map.floor_level);
 		//GRAPHICS
-		SDL_SetRenderDrawColor(renderer, 50, 100, 45, 255);
-		SDL_RenderClear(renderer);
-		SDL_SetRenderDrawColor(renderer, 150, 150, 170, 255);
-		SDL_Rect bg = {0, 0, Game::screen_w, Game::screen_h/2};
-		SDL_RenderFillRect(renderer, &bg);	
-        cam.Render(world_map);
+        cam.Render(renderer, world_map);
         //MENU
         if(Game::game_mode == GameMode::MENU){
 			SDL_SetRenderDrawColor(renderer, 0, 0, 20, 128);
 			SDL_Rect menu_bg = {0, 0, Game::screen_w, Game::screen_h};
 			SDL_RenderFillRect(renderer, &menu_bg);
 			if(Game::blinker1s){
-				game_name_text.Draw(renderer, {100, 0, 600, 50});
+				game_name_text.Draw(renderer, {(Game::screen_w - 600)/2, 0, 600, 50});
 			}
-			game_version_text.Draw(renderer, {700, 500, 80, 80});
+			game_version_text.Draw(renderer, {Game::screen_w - 300, Game::screen_h - 100, 280, 80});
 			press_enter_text.Draw(renderer, {0, 300, 800, 50});
 		}
         //FPS TEXT
