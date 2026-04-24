@@ -1018,7 +1018,7 @@ namespace Game{
 		PLAYING,
 		PAUSED
 	};
-	constexpr char version[] = "V0.02 FOG UPDATE";
+	constexpr char version[] = "V0.03 SETTINGS/PHYSICS/GRAPHICS UPDATE";
 	constexpr char name[] = "FANTASY3D";
 	//GAME
 	bool game_running = true;
@@ -1184,7 +1184,7 @@ int main(int argc, char* argv[])
 			if(Game::blinker_1s.state){
 				game_name_text.Draw(renderer, {(Game::screen_w - 600)/2, 0, 600, 50});
 			}
-			game_version_text.Draw(renderer, {Game::screen_w - 300, Game::screen_h - 100, 280, 80});
+			game_version_text.Draw(renderer, {Game::screen_w - 600, Game::screen_h - 100, 580, 80});
 			press_enter_text.Draw(renderer, {0, 300, 800, 50});
 		}
         //FPS TEXT
