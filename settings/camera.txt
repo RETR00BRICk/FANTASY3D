@@ -1,0 +1,10 @@
+FOV (IN DERGEES):            60
+RENDER PLANE HEIGHT (IN CM): 120 	#I was too lazy to make loading float values
+RENDER QUALITY: 	     400 	#The number of lines the camera draws on the screen
+RENDER DISTANCE (IN METERS): 100
+
+#So render plane is a virtual surface, on what the graphics is rendered on. it does not depend on FOV
+#It means you can change height/width propotions of rendered objects by changing FOV and RENDER PLANE HEIGHT
+#If you make FOV larger, the objects' width becomes smaller on the screen
+#Same for render plane height, but then height of an object changes
+#FOV is not proportional to render plane height. One is measured in degrees, other in meters

@@ -1,20 +1,25 @@
 # *FANTASY3D*
 Hello! This is my first C++ project with graphics.
 It's a pseudo 3D engine. Uses raycasting technology to render.
-![Demo](assets/gifs/demo2.gif)
-## FOG UPDATE 0.02
-* Added fog
-* Added render distance - now objects aren't rendered if too far away
-* Made window resizable
-* Some small code refactoring
-* 'maps/arena.txt' is now finished completely
+![Demo](assets/gifs/demo3.gif)
+## SETTINGS/PHYSICS/GRAPHICS UPDATE 0.03
+* New functions for operations with strings (char arrays)
+* Added white coordinate grid on the floor
+* Added realistic player movement with acceleration and friction
+* Remade loading from files, removed `fstream` library
+* Added settings loading (settings/camera.txt and settings/global.txt)
+* Render() function in `class Camera` is heavily refactored
+* Some other code refactoring, optimizations
 
 ## What can it do now:
+* Loading settings from text files (mouse sensitivity, fov, screen resolution etc.) 
 * Render the map, provided in "maps/arena.txt" (with fog!)
-* Supports collisions with the map, supports moving by Z-axis (vertical one)
-* Supports 2 player modes: cheater (when you can fly and no-clip) and default (when you only can walk and jump)
-* Supports simple gravity: player falls down in default mode
-* Supports resizing the window while keeping view propotions the same
+* Render the grid on the floor with size of 1 meter
+* Collisions with the map, supports moving by Z-axis (vertical one)
+* 2 player modes: cheater (when you can fly and no-clip) and default (when you only can walk and jump)
+* Quake-inspired player movement with acceleration, friction and strafe-jumping
+* Simple gravity: player falls down in default mode
+* Resizing the window keeps view propotions the same
 
 ## Controls:
 - W,A,S,D - movement
@@ -27,7 +32,7 @@ It's a pseudo 3D engine. Uses raycasting technology to render.
 ## What libraries does it use?
 1. SDL2
 2. SDL2_ttf
-3. fstream
+3. ~~fstream~~ no longer needed!
 4. cmath
 
 **How to install needed libraries? (Ubuntu/Debian/Mint)**:  
