@@ -9,7 +9,8 @@ It's a pseudo 3D engine. Uses raycasting technology to render.
 * Icon is displayed in the application window title bar
 * Code for loading icon is located in `src/main.cpp` in `Game::LoadIcon()`
 
-###*Btw icon looks like this:*###
+### *Btw icon looks like this:*
+
 ![Icon](assets/textures/ICON.bmp)
 
 ## Controls:
