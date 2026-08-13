@@ -37,6 +37,8 @@
 *.out
 *.app
 main
+FANTASY3D
+*.geany
 *.zip
 
 # debug information files
