@@ -3,6 +3,7 @@
 #include "mathematics.h"
 #include "map.h"
 
+
 void PhysicsBody::Teleport3(const Mathematics::Vector3& vector){
 	pos = vector;
 }
@@ -24,18 +25,22 @@ void PhysicsBody::ApplySpeed(float dt){
 	pos += curr_speed * dt;
 }
 
-void PhysicsBody::Stop(const Mathematics::Vector3& stop_amount_vec){
-	curr_speed.x *= (1.0f - stop_amount_vec.x);
-	curr_speed.y *= (1.0f - stop_amount_vec.y);
-	curr_speed.z *= (1.0f - stop_amount_vec.z);
+void PhysicsBody::Stop(bool x, bool y, bool z){
+	curr_speed.x *= !x;
+	curr_speed.y *= !y;
+	curr_speed.z *= !z;
 }
 
 void PhysicsBody::AccelerateByVector(const Mathematics::Vector3& accel, float dt){
 	curr_speed += accel * dt;
 }
 
+void PhysicsBody::Gravitate(float dt){
+	curr_speed -= Mathematics::Vector3{0.0f, 0.0f, gravity} * dt;
+}
+
 void PhysicsBody::AccelerateByAngle(float angle, float accel, float dt){
-		AccelerateByVector(Mathematics::GetVectorByAngle3(angle) * accel, dt);
+	AccelerateByVector(Mathematics::GetVectorByAngle3(angle) * accel, dt);
 }
 
 void PhysicsBody::AccelerateToSpeedVector(const Mathematics::Vector2& target_spd_vec, float accel, float dt){ //Written by the idea of Quake 1 code

@@ -26,7 +26,7 @@ public:
 	void Jump(float speed, float floor_level);
 	void MoveZ(float input, float dt);
 	void Turn(float input, float multiplier);
-	void Gravitate(float acceleration, float dt);
+	void Gravitate(float dt);
 	void AddFriction(float floor_level, float dt);
 	void ApplySpeed(float dt, const Map& map);
 private:

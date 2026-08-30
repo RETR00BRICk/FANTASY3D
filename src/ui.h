@@ -2,7 +2,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-namespace UI{
+class UIScreen{
+public:
 	struct TextBox{
 		static constexpr int max_text_len = 1024;
 		char last_text[max_text_len] = {};
@@ -14,4 +15,11 @@ namespace UI{
 		//DRAW THE STORED TEXTURE (FAST)
 		void Draw(SDL_Renderer* renderer, const SDL_Rect& rect);
 	};
-}
+	
+	UIScreen(int out_w, int out_h);
+	void SetSize(int out_w, int out_h);
+private:
+	int out_w_;
+	int out_h_;
+	
+};

@@ -51,7 +51,7 @@ void Player::NextMode(){
 	}else{
 		mode_ = (PlayerMode)next;
 	}
-	body_.Stop({0.0f,0.0f,1.0f});
+	body_.Stop(false, false, true);
 }
 
 void Player::Respawn(bool save_inventory){
@@ -92,9 +92,9 @@ void Player::Turn(float input, float multiplier){
 	angle_ = Mathematics::GetClampedAngle(angle_);
 }
 
-void Player::Gravitate(float acceleration, float dt){
+void Player::Gravitate(float dt){
 	if(mode_ == PlayerMode::CHEATER) return;
-	body_.AccelerateByVector({0.0f,0.0f,-acceleration}, dt);
+	body_.Gravitate(dt);
 }
 
 void Player::AddFriction(float floor_level, float dt){

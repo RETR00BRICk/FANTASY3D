@@ -79,6 +79,7 @@ void Camera::LoadSettings(){
 	SDL_RWops* file = SDL_RWFromFile("settings/camera.txt", "rb");
 	if (!file) return;
 	int file_size = SDL_RWsize(file);
+	if(file_size <= 0) return;
 	char char_array[file_size]; //If it doesn't fit on the stack, it is the user fault, not mine!
 	SDL_RWread(file, char_array, 1, file_size);
 	SDL_RWclose(file);
@@ -193,23 +194,22 @@ bool Camera::TryGetDistanceOfRayIntersectionWithWall_CH(const Wall& wall, const 
 }
 
 void Camera::SortHitArray_CH(HitInfo* array, int array_size){
-	int sorted_count = 1;
+	int sorted_count = 1; //FIRST ELEMENT OF A SORTED PART IN ARRAY AS ALREADY SORTED
 	while(sorted_count < array_size){
 		//NEXT DIRTY ELEMENT
 		HitInfo element = array[sorted_count];
-		//IF IT'S VALUE IS BIGGER THAN LAST SORTED ENEMENT'S ONE = SKIPPING THE CHECK
+		//IF DIRTY ELEMENT IS BIGGER THAN LAST SORTED ONE, STARTING TO MOVE IT INTO SORTED PART
 		if(element.distance > array[sorted_count - 1].distance){
-			//TRYING TO GET THE NEEDED POSITION
 			int sorted_index = sorted_count - 1;
 			while(sorted_index >= 0){
-				if(element.distance > array[sorted_index].distance){
-					array[sorted_index+1] = array[sorted_index];
+				if(element.distance > array[sorted_index].distance){ 
+					array[sorted_index+1] = array[sorted_index]; //MOVING SORTED ELEMENTS TO THE RIGHT ONE BY ONE
 				}else{
-					break;
+					break; //FOUND CORRECT PLACE
 				}
 				sorted_index--;
 			}
-			array[sorted_index + 1] = element; //ADDING DIRTY ELEMENT INTO SORTED ONES
+			array[sorted_index + 1] = element; //INSERTING DIRTY ELEMENT INTO CORRECT PLACE
 		}
 		sorted_count ++; //EXPANDING SORTED PART OF THE ARRAY
 	}

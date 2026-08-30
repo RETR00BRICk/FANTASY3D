@@ -18,7 +18,7 @@ void Map::Load(const char* file_name){
 	SDL_RWops* file = SDL_RWFromFile(file_path, "rb");
 	if (!file) return;
 	int file_size = SDL_RWsize(file);	
-	if (file_size < 1) return;
+	if (file_size <= 0) return;
 	char char_array[file_size]; //If it doesn't fit on the stack, it is the user fault
 	int cursor = 0;
 	SDL_RWread(file, char_array, 1, file_size);
