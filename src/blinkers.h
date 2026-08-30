@@ -8,4 +8,3 @@ namespace Blinkers{
 		void Update(float dt);
 	};
 }
-

@@ -4,13 +4,12 @@
 Hello! This is my first C++ project with graphics.
 It's a pseudo 3D engine. Uses raycasting technology to render.
 ![Demo](assets/gifs/demo3.gif)
-## V0.04 REFACTORING/ICON LOADING UPDATE
-* Distributed code from **main.cpp** to other **.cpp** and **.h** files in `src/`
-* Added icon loading from `assets/textures/ICON.bmp`
-* Icon is displayed in the application window title bar
-* Code for loading icon is located in `src/main.cpp` in `Game::LoadIcon()`
+## V0.05 REFACTORING + FPS LIMITER
+* Heavily refactored `src/main.cpp` and a little bit in other files 
+* Added code for limiting FPS in `src/main.cpp` in `class FPSManager`
+* Target fps is loaded from `settings/global.txt`
 
-### *Btw icon looks like this:*
+### *Game icon:*
 
 ![Icon](assets/textures/ICON.bmp)
 
